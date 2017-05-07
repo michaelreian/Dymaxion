@@ -10,9 +10,111 @@ using MediatR;
 using System.Net.Http;
 using HtmlAgilityPack.CssSelectors.NetCore;
 using System.Text.RegularExpressions;
+using Serilog;
 
 namespace DataReaver.Framework.Picaroon
 {
+
+    public class GetProxyQuery : IRequest<Uri>
+    {
+    }
+
+    public class GetProxyQueryHandler : IAsyncRequestHandler<GetProxyQuery, Uri>
+    {
+        private readonly IMediator mediator;
+        private readonly ILogger logger;
+
+        public GetProxyQueryHandler(IMediator mediator, ILogger logger)
+        {
+            this.mediator = mediator;
+            this.logger = logger;
+        }
+
+        public async Task<Uri> Handle(GetProxyQuery message)
+        {
+            var proxies = await this.mediator.Send(new GetProxiesQuery());
+
+            foreach(var proxy in proxies.OrderBy(p => p.Speed))
+            {
+                var builder = new UriBuilder(proxy.Secure ? "https" : "http", proxy.Domain);
+
+                var uri = builder.Uri;
+
+                if (await this.Check(uri))
+                {
+                    return uri;
+                }
+            }
+
+            return null;
+        }
+
+        private async Task<bool> Check(Uri uri)
+        {
+            try
+            {
+                using (var restClient = new RestClient(uri))
+                {
+                    var response = await restClient.Get<string>("");
+
+                    response.EnsureSuccessStatusCode();
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                this.logger.Warning(exception, "There was an error checking {Uri}", uri);
+            }
+            return false;
+        }
+
+
+    }
+
+    public class PicaroonProxy
+    {
+        public string Domain { get; set; }
+        public decimal Speed { get; set; }
+        public bool Secure { get; set; }
+        public string Country { get; set; }
+        public bool Probed { get; set; }
+    }
+
+
+    public class GetProxiesQuery : IRequest<List<PicaroonProxy>>
+    {
+    }
+
+    public class GetProxiesQueryHandler : IAsyncRequestHandler<GetProxiesQuery, List<PicaroonProxy>>
+    {
+        private static readonly string THE_PIRATE_BAY_PROXY_LIST_URL = "https://thepiratebay-proxylist.org/api/v1/proxies";
+
+        private readonly IMediator mediator;
+
+        public GetProxiesQueryHandler(IMediator mediator)
+        {
+            this.mediator = mediator;
+        }
+
+        public async Task<List<PicaroonProxy>> Handle(GetProxiesQuery message)
+        {
+            using (var restClient = new RestClient())
+            {
+                var response = await restClient.Get<Result>(THE_PIRATE_BAY_PROXY_LIST_URL);
+
+                response.EnsureSuccessStatusCode();
+
+                return await response.GetData(x => x.Proxies);
+            }
+        }
+
+        private class Result
+        {
+            public List<PicaroonProxy> Proxies { get; set; }
+        }
+    }
+
     public class GetCategoriesQuery : IRequest<List<Category>>
     {
         public string BaseUrl { get; set; }
@@ -31,13 +133,14 @@ namespace DataReaver.Framework.Picaroon
 
         public async Task<List<Category>> Handle(GetCategoriesQuery message)
         {
-            var builder = new UriBuilder(message.BaseUrl);
+            using (var restClient = new RestClient(message.BaseUrl))
+            {
+                var response = await restClient.Get<string>("browse");
 
-            builder.Path = "browse";
+                var html = await response.GetContent();
 
-            var html = await this.mediator.Send(new GetHtmlQuery { RequestUri = builder.ToString() });
-
-            return this.Parse(html);
+                return this.Parse(html);
+            }
         }
 
         private List<Category> Parse(string html)
@@ -65,7 +168,7 @@ namespace DataReaver.Framework.Picaroon
 
                 foreach(var subcategoryNode in subcategoryNodes.Where(x => x.GetAttributeValue("label", null) == category.Name).SelectMany(x => x.QuerySelectorAll("option")))
                 {
-                    var subcategory = new Subcategory();
+                    var subcategory = new Category();
 
                     subcategory.ID = subcategoryNode.GetAttributeValue("value", null);
                     subcategory.Name = subcategoryNode.NextSibling.InnerText;
@@ -99,12 +202,6 @@ namespace DataReaver.Framework.Picaroon
     {
         public string ID { get; set; }
         public string Name { get; set; }
-        public List<Subcategory> Subcategories { get; set; } = new List<Subcategory>();
-    }
-
-    public class Subcategory
-    {
-        public string ID { get; set; }
-        public string Name { get; set; }
+        public List<Category> Subcategories { get; set; } = new List<Category>();
     }
 }
