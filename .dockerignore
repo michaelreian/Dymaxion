@@ -1,0 +1,9 @@
+logs/
+artifacts/
+**/wwwroot/app
+
+**/node_modules/
+**/obj/
+**/bin/
+*.git
+*.vs

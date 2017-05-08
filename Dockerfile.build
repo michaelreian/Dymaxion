@@ -1,0 +1,33 @@
+FROM microsoft/aspnetcore-build:1.1.1
+
+RUN npm install -g typescript
+RUN npm install -g webpack
+
+RUN mkdir -p /var/app/workspace
+
+WORKDIR /var/app/workspace
+
+COPY NuGet.config /var/app/workspace/
+COPY Dymaxion.sln /var/app/workspace/
+
+
+COPY src/Dymaxion/Dymaxion.csproj /var/app/workspace/src/Dymaxion/Dymaxion.csproj
+
+RUN dotnet restore
+
+COPY src/Dymaxion/package.json /var/app/workspace/src/Dymaxion/package.json
+
+RUN npm install ./src/Dymaxion --prefix ./src/Dymaxion
+
+
+COPY . .
+
+WORKDIR /var/app/workspace/src/Dymaxion
+
+RUN webpack
+
+RUN mkdir -p /var/app/dist
+
+RUN dotnet publish --output /var/app/dist
+
+COPY Dockerfile /var/app/dist

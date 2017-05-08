@@ -17,6 +17,7 @@ using MediatR;
 using System.Reflection;
 using Serilog.Events;
 using Dymaxion.Framework;
+using Microsoft.AspNetCore.SpaServices.Webpack;
 
 namespace Dymaxion
 {
@@ -69,6 +70,10 @@ namespace Dymaxion
                 loggerFactory.AddDebug();
                 app.UseDeveloperExceptionPage();
                 app.UseBrowserLink();
+                app.UseWebpackDevMiddleware(new WebpackDevMiddlewareOptions
+                {
+                    HotModuleReplacement = true
+                });
             }
             else
             {
@@ -92,6 +97,10 @@ namespace Dymaxion
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
+
+                routes.MapSpaFallbackRoute(
+                    name: "spa-fallback",
+                    defaults: new { controller = "Home", action = "Index" });
             });
         }
     }
