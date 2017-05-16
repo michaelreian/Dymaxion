@@ -21,7 +21,7 @@ namespace DataReaver.Controllers
             this.mediator = mediator;
         }
 
-        [HttpGet("")]
+        [HttpGet("picaroon")]
         [SwaggerIgnore]
         public IActionResult Index()
         {

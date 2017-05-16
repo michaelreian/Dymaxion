@@ -5,7 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="app\js\main.ts" />
+    <Content Include="app\picaroon\js\app-root.ts" />
+    <Content Include="app\picaroon\js\picaroon.ts" />
     <Content Include="webpack.config.js" />
   </ItemGroup>
   <ItemGroup>
@@ -47,5 +48,23 @@
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="1.0.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="app\picaroon\css\" />
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+  <Target Name="RunWebpack" AfterTargets="ComputeFilesToPublish">
+    <!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
+    <Exec Command="npm install" />
+    <Exec Command="node node_modules/webpack/bin/webpack.js --config webpack.config.vendor.js --env.prod" />
+    <Exec Command="node node_modules/webpack/bin/webpack.js --env.prod" />
 
+    <!-- Include the newly-built files in the publish output -->
+    <ItemGroup>
+      <DistFiles Include="wwwroot\app\**" />
+      <ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>%(DistFiles.Identity)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>

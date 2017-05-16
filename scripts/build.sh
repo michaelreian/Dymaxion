@@ -28,7 +28,7 @@ BUILD_CONTAINER=$(docker create build-image)
 
 echo "Copying artifacts..."
 
-docker cp $BUILD_CONTAINER:/var/app/dist/ $(pwd)/artifacts/
+docker cp $BUILD_CONTAINER:/var/app/dist/. $(pwd)/artifacts
 
 echo "Removing build image..."
 

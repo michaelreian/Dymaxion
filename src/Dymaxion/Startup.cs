@@ -68,8 +68,6 @@ namespace Dymaxion
             if (hostingEnvironment.IsDevelopment())
             {
                 loggerFactory.AddDebug();
-                app.UseDeveloperExceptionPage();
-                app.UseBrowserLink();
                 app.UseWebpackDevMiddleware(new WebpackDevMiddlewareOptions
                 {
                     HotModuleReplacement = true
